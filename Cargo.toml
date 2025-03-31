@@ -1,0 +1,30 @@
+[package]
+name = "ciphertools"
+version = "0.1.0"
+edition = "2021"
+
+[lints.clippy]
+needless_lifetimes = "deny"
+
+[lints.rust]
+warnings = "deny"
+
+[profile.release]
+debug = true
+
+[[bin]]
+name = "ciphertools"
+path = "src/main.rs"
+
+[[bin]]
+name = "ciphertools-dev"
+path = "src/ciphertools_dev.rs"
+
+[dependencies]
+ahash = { version = "*", features = ["serde"] }
+clap = { version = "*", features = ["derive"] }
+csv = "*"
+itertools = "*"
+log= "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
