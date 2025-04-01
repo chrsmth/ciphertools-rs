@@ -1,8 +1,9 @@
 pub mod caesar;
+pub mod substitution;
 pub mod vigenere;
 
-use crate::cli::caesar::CaesarOpts;
 use crate::cli::vigenere::VigenereOpts;
+use crate::cli::{caesar::CaesarOpts, substitution::SubstitutionOpts};
 
 use clap::{Parser, ValueEnum};
 
@@ -20,11 +21,12 @@ pub struct CliOpts {
 #[derive(Parser, Debug)]
 pub enum Commands {
   Vigenere(VigenereOpts),
+  Substitution(SubstitutionOpts),
   Caesar(CaesarOpts),
 }
 
 #[derive(Parser, Debug)]
-pub struct DictionaryAttackOpts {
+pub struct DictionaryOpts {
   pub ciphertext: String,
   pub dictionary_file: String,
   #[clap(long, hide = true, value_enum, default_value_t = Confidence::Chi2Trigrams)]

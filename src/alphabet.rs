@@ -70,7 +70,7 @@ impl Alphabet {
     self.chars.len()
   }
 
-  pub fn _contains(&self, c: char) -> bool {
+  pub fn contains(&self, c: char) -> bool {
     self.indexes.contains_key(&c)
   }
 

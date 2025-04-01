@@ -1,4 +1,5 @@
 pub mod caesar;
+pub mod substitution;
 pub mod vigenere;
 
 pub trait Encipher {

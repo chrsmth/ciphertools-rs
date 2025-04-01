@@ -8,9 +8,11 @@ mod ngrams;
 mod resources;
 
 use crate::cipher::caesar;
+use crate::cipher::substitution;
 use crate::cipher::vigenere;
 use crate::cipher::vigenere::VigenereKey;
 use crate::cipher::BruteForceIterator;
+use crate::cli::CliOpts;
 use crate::manager::Manager;
 use std::fmt::Display;
 use std::{io::BufRead, num::NonZeroUsize};
@@ -24,7 +26,13 @@ use crate::{
 
 fn main() {
   let cli = cli::CliOpts::parse();
+  run(cli).unwrap_or_else(|e| {
+    eprintln!("{e}");
+    std::process::exit(1);
+  });
+}
 
+fn run(cli: CliOpts) -> Result<(), String> {
   let language = Language::english();
   match cli.commands {
     cli::Commands::Vigenere(opts) => {
@@ -44,14 +52,35 @@ fn main() {
             &opts.ciphertext,
           );
         }
-        cli::vigenere::VigenereCommands::DictionaryAttack(opts) => {
+        cli::vigenere::VigenereCommands::Dictionary(opts) => {
           let confidence = opts.confidence_algorithm.into_confidence(language);
           run_dictionary_attack(
             context,
             &opts.ciphertext,
-            get_vigenere_dictionary_iter(&opts.dictionary_file),
+            get_vigenere_dictionary_iter(&opts.dictionary_file)?,
             &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
           )
+        }
+      }
+    }
+    cli::Commands::Substitution(opts) => {
+      let context = substitution::Substitution::new(opts.alphabet.into());
+      match opts.commands {
+        cli::substitution::SubstitutionCommands::Encipher(opts) => {
+          let key = substitution::SubstitutionEncipherKey::try_new(
+            opts.key,
+            context.alphabet(),
+          )
+          .map_err(|e| format!("Failed to parse key: {e}"))?;
+          run_encipher(&key, context, &opts.plaintext);
+        }
+        cli::substitution::SubstitutionCommands::Decipher(opts) => {
+          let key = substitution::SubstitutionDecipherKey::try_new(
+            opts.key,
+            context.alphabet(),
+          )
+          .map_err(|e| format!("Failed to parse key: {e}"))?;
+          run_decipher(&key, context, &opts.ciphertext);
         }
       }
     }
@@ -83,8 +112,8 @@ fn main() {
       }
     }
   }
+  Ok(())
 }
-
 fn run_encipher<E: Encipher>(key: &E::Key, context: E, plaintext: &str) {
   let result = context.encipher(plaintext, key);
   println!("{}", result);
@@ -125,19 +154,17 @@ fn run_dictionary_attack<D>(
 
 fn get_vigenere_dictionary_iter(
   dictionary_file: &str,
-) -> impl Iterator<Item = VigenereKey> {
-  let reader = std::io::BufReader::new(
-    std::fs::File::open(dictionary_file).unwrap_or_else(|e| {
-      eprintln!("Failed to open file '{}': {}", dictionary_file, e);
-      std::process::exit(1);
-    }),
-  );
+) -> Result<impl Iterator<Item = VigenereKey>, String> {
+  let reader =
+    std::io::BufReader::new(std::fs::File::open(dictionary_file).map_err(
+      |e| format!("Failed to open file '{}': {}", dictionary_file, e),
+    )?);
 
-  reader.lines().filter_map(|line_result| match line_result {
+  Ok(reader.lines().filter_map(|line_result| match line_result {
     Ok(line) => Some(vigenere::VigenereKey::new(line)),
     Err(e) => {
       eprintln!("failed to parse line in dictionary: {}", e);
       None
     }
-  })
+  }))
 }
