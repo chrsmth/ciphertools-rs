@@ -5,10 +5,10 @@ use crate::{
 use std::fmt;
 
 #[derive(Debug, Clone)]
-pub struct VigenereKey(String);
+pub struct AutokeyKey(String); //TODO try_new that errors on invalid chars
 
 #[derive(Debug, Clone)]
-pub struct Vigenere {
+pub struct Autokey {
   alphabet: Alphabet,
 }
 
@@ -25,7 +25,7 @@ impl fmt::Display for ParseError {
   }
 }
 
-impl VigenereKey {
+impl AutokeyKey {
   pub fn len(&self) -> usize {
     self.0.len()
   }
@@ -34,41 +34,41 @@ impl VigenereKey {
     self.0.is_empty()
   }
 
-  pub fn try_new(key: String, context: &Vigenere) -> Result<Self, ParseError> {
+  pub fn try_new(key: String, context: &Autokey) -> Result<Self, ParseError> {
     if let Some(k) = key.chars().find(|&k| !context.alphabet.contains(k)) {
       return Err(ParseError::InvalidChar(k));
     }
 
-    Ok(VigenereKey::new(key))
+    Ok(AutokeyKey::new(key))
   }
 
   pub fn new(key: String) -> Self {
-    VigenereKey(key)
+    AutokeyKey(key)
   }
 }
 
-impl TryFrom<(&str, &Vigenere)> for VigenereKey {
+impl Autokey {
+  pub fn new(alphabet: Alphabet) -> Self {
+    Autokey { alphabet }
+  }
+}
+
+impl TryFrom<(&str, &Autokey)> for AutokeyKey {
   type Error = ParseError;
 
-  fn try_from((key, context): (&str, &Vigenere)) -> Result<Self, Self::Error> {
+  fn try_from((key, context): (&str, &Autokey)) -> Result<Self, Self::Error> {
     Self::try_new(key.to_string(), context)
   }
 }
 
-impl Vigenere {
-  pub fn new(alphabet: Alphabet) -> Self {
-    Vigenere { alphabet }
-  }
-}
-
-impl std::fmt::Display for VigenereKey {
+impl std::fmt::Display for AutokeyKey {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.0)
   }
 }
 
-impl Encipher for Vigenere {
-  type Key = VigenereKey;
+impl Encipher for Autokey {
+  type Key = AutokeyKey;
 
   fn encipher(&self, plaintext: &str, key: &Self::Key) -> String {
     if key.is_empty() {
@@ -77,24 +77,35 @@ impl Encipher for Vigenere {
 
     plaintext
       .chars()
-      .zip(key.0.chars().cycle())
+      .zip(key.0.chars().chain(plaintext.chars()))
       .map(|(c, k)| self.alphabet.add(c, k))
       .collect()
   }
 }
 
-impl Decipher for Vigenere {
-  type Key = VigenereKey;
+impl Decipher for Autokey {
+  type Key = AutokeyKey;
 
   fn decipher(&self, ciphertext: &str, key: &Self::Key) -> String {
     if key.is_empty() {
       return ciphertext.to_string();
     }
 
-    ciphertext
-      .chars()
-      .zip(key.0.chars().cycle())
-      .map(|(c, k)| self.alphabet.sub(c, k))
-      .collect()
+    let mut ciphertext_iter = ciphertext.chars();
+    let mut autokey = Vec::new();
+
+    for k in key.0.chars() {
+      if let Some(c) = ciphertext_iter.next() {
+        autokey.push(self.alphabet.sub(c, k));
+      } else {
+        return autokey.into_iter().collect();
+      }
+    }
+
+    for (i, c) in ciphertext_iter.enumerate() {
+      autokey.push(self.alphabet.sub(c, autokey[i]));
+    }
+
+    autokey.iter().collect()
   }
 }

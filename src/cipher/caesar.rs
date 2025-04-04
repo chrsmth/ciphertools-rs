@@ -2,17 +2,40 @@ use crate::{
   alphabet::Alphabet,
   cipher::{BruteForceIterator, Decipher, Encipher},
 };
+use std::fmt;
 
+#[derive(Debug, Clone)]
 pub struct CaesarKey(char);
 
-#[derive(Default)]
+#[derive(Debug, Clone)]
 pub struct Caesar {
   alphabet: Alphabet,
 }
 
+#[derive(Debug)]
+pub enum ParseError {
+  InvalidChar(char),
+}
+
+impl fmt::Display for ParseError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      ParseError::InvalidChar(c) => write!(f, "Invalid character: '{c}'"),
+    }
+  }
+}
+
 impl CaesarKey {
-  pub fn new(shift: char) -> Self {
-    CaesarKey(shift)
+  pub fn try_new(key: char, context: &Caesar) -> Result<Self, ParseError> {
+    if !context.alphabet.contains(key) {
+      return Err(ParseError::InvalidChar(key));
+    }
+
+    Ok(Self::new(key))
+  }
+
+  pub fn new(key: char) -> Self {
+    CaesarKey(key)
   }
 }
 

@@ -1,7 +1,9 @@
+pub mod autokey;
 pub mod caesar;
 pub mod substitution;
 pub mod vigenere;
 
+use crate::cli::autokey::AutokeyOpts;
 use crate::cli::vigenere::VigenereOpts;
 use crate::cli::{caesar::CaesarOpts, substitution::SubstitutionOpts};
 
@@ -20,6 +22,7 @@ pub struct CliOpts {
 
 #[derive(Parser, Debug)]
 pub enum Commands {
+  Autokey(AutokeyOpts),
   Vigenere(VigenereOpts),
   Substitution(SubstitutionOpts),
   Caesar(CaesarOpts),

@@ -7,15 +7,19 @@ mod manager;
 mod ngrams;
 mod resources;
 
+use crate::cipher::autokey;
 use crate::cipher::caesar;
 use crate::cipher::substitution;
 use crate::cipher::vigenere;
-use crate::cipher::vigenere::VigenereKey;
 use crate::cipher::BruteForceIterator;
 use crate::cli::CliOpts;
 use crate::manager::Manager;
 use std::fmt::Display;
-use std::{io::BufRead, num::NonZeroUsize};
+use std::fs::File;
+use std::{
+  io::{BufRead, BufReader},
+  num::NonZeroUsize,
+};
 
 use clap::Parser;
 
@@ -35,29 +39,65 @@ fn main() {
 fn run(cli: CliOpts) -> Result<(), String> {
   let language = Language::english();
   match cli.commands {
+    cli::Commands::Autokey(opts) => {
+      let context = autokey::Autokey::new(opts.alphabet.into());
+      match opts.commands {
+        cli::autokey::AutokeyCommands::Encipher(opts) => {
+          run_encipher(
+            &autokey::AutokeyKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
+            context,
+            &opts.plaintext,
+          );
+        }
+        cli::autokey::AutokeyCommands::Decipher(opts) => {
+          run_decipher(
+            &autokey::AutokeyKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
+            context,
+            &opts.ciphertext,
+          );
+        }
+        cli::autokey::AutokeyCommands::Dictionary(opts) => {
+          let confidence = opts.confidence_algorithm.into_confidence(language);
+          let dictionary_iter =
+            get_dictionary_iter(&opts.dictionary_file, context.clone())?;
+          run_dictionary_attack(
+            context,
+            &opts.ciphertext,
+            dictionary_iter,
+            &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
+          )
+        }
+      }
+    }
     cli::Commands::Vigenere(opts) => {
       let context = vigenere::Vigenere::new(opts.alphabet.into());
       match opts.commands {
         cli::vigenere::VigenereCommands::Encipher(opts) => {
           run_encipher(
-            &vigenere::VigenereKey::new(opts.key),
+            &vigenere::VigenereKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
             context,
             &opts.plaintext,
           );
         }
         cli::vigenere::VigenereCommands::Decipher(opts) => {
           run_decipher(
-            &vigenere::VigenereKey::new(opts.key),
+            &vigenere::VigenereKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
             context,
             &opts.ciphertext,
           );
         }
         cli::vigenere::VigenereCommands::Dictionary(opts) => {
           let confidence = opts.confidence_algorithm.into_confidence(language);
+          let dictionary_iter =
+            get_dictionary_iter(&opts.dictionary_file, context.clone())?;
           run_dictionary_attack(
             context,
             &opts.ciphertext,
-            get_vigenere_dictionary_iter(&opts.dictionary_file)?,
+            dictionary_iter,
             &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
           )
         }
@@ -67,19 +107,20 @@ fn run(cli: CliOpts) -> Result<(), String> {
       let context = substitution::Substitution::new(opts.alphabet.into());
       match opts.commands {
         cli::substitution::SubstitutionCommands::Encipher(opts) => {
-          let key = substitution::SubstitutionEncipherKey::try_new(
-            opts.key,
-            context.alphabet(),
-          )
+          let key = substitution::SubstitutionEncipherKey::try_from((
+            opts.key.as_str(),
+            &context,
+          ))
           .map_err(|e| format!("Failed to parse key: {e}"))?;
           run_encipher(&key, context, &opts.plaintext);
         }
         cli::substitution::SubstitutionCommands::Decipher(opts) => {
-          let key = substitution::SubstitutionDecipherKey::try_new(
-            opts.key,
-            context.alphabet(),
-          )
-          .map_err(|e| format!("Failed to parse key: {e}"))?;
+          let key = substitution::SubstitutionEncipherKey::try_from((
+            opts.key.as_str(),
+            &context,
+          ))
+          .map_err(|e| format!("Failed to parse key: {e}"))?
+          .inverse();
           run_decipher(&key, context, &opts.ciphertext);
         }
       }
@@ -89,14 +130,16 @@ fn run(cli: CliOpts) -> Result<(), String> {
       match opts.commands {
         cli::caesar::CaesarCommands::Encipher(opts) => {
           run_encipher(
-            &caesar::CaesarKey::new(opts.key),
+            &caesar::CaesarKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
             context,
             &opts.plaintext,
           );
         }
         cli::caesar::CaesarCommands::Decipher(opts) => {
           run_decipher(
-            &caesar::CaesarKey::new(opts.key),
+            &caesar::CaesarKey::try_new(opts.key, &context)
+              .map_err(|e| format!("Failed to parse key: {e}"))?,
             context,
             &opts.ciphertext,
           );
@@ -152,19 +195,31 @@ fn run_dictionary_attack<D>(
   manager.display_scoreboard();
 }
 
-fn get_vigenere_dictionary_iter(
+fn get_dictionary_iter<K, C>(
   dictionary_file: &str,
-) -> Result<impl Iterator<Item = VigenereKey>, String> {
-  let reader =
-    std::io::BufReader::new(std::fs::File::open(dictionary_file).map_err(
-      |e| format!("Failed to open file '{}': {}", dictionary_file, e),
-    )?);
+  context: C,
+) -> Result<impl Iterator<Item = K>, String>
+where
+  for<'a> K: TryFrom<(&'a str, &'a C)>,
+  for<'a> <K as TryFrom<(&'a str, &'a C)>>::Error: std::fmt::Display,
+{
+  let file = File::open(dictionary_file)
+    .map_err(|e| format!("Failed to open file '{}': {}", dictionary_file, e))?;
+  let reader = BufReader::new(file);
 
-  Ok(reader.lines().filter_map(|line_result| match line_result {
-    Ok(line) => Some(vigenere::VigenereKey::new(line)),
+  let iter = reader.lines().filter_map(move |line_res| match line_res {
+    Ok(line) => match K::try_from((&line, &context)) {
+      Ok(key) => Some(key),
+      Err(e) => {
+        eprintln!("failed to parse line in dictionary: {e}");
+        None
+      }
+    },
     Err(e) => {
-      eprintln!("failed to parse line in dictionary: {}", e);
+      eprintln!("failed to parse line in dictionary: {e}");
       None
     }
-  }))
+  });
+
+  Ok(iter)
 }
