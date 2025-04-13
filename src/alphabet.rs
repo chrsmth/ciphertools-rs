@@ -1,4 +1,5 @@
 use ahash::AHashMap;
+use serde::{Deserialize, Serialize};
 
 static LATIN: &[char; 26] = &[
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
@@ -16,10 +17,41 @@ static GREEK: &[char; 24] = &[
   'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ', 'ω',
 ];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(from = "AlphabetDeserializer", into = "AlphabetSerializer")]
 pub struct Alphabet {
   chars: Vec<char>,
   indexes: AHashMap<char, usize>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+enum AlphabetSerializer {
+  Chars(String),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+enum AlphabetDeserializer {
+  Chars(String),
+  Latin,
+  Russian,
+  Greek,
+}
+
+impl From<AlphabetDeserializer> for Alphabet {
+  fn from(value: AlphabetDeserializer) -> Self {
+    match value {
+      AlphabetDeserializer::Chars(cs) => Alphabet::from_iter(cs.chars()),
+      AlphabetDeserializer::Latin => Alphabet::latin(),
+      AlphabetDeserializer::Russian => Alphabet::russian(),
+      AlphabetDeserializer::Greek => Alphabet::greek(),
+    }
+  }
+}
+
+impl From<Alphabet> for AlphabetSerializer {
+  fn from(value: Alphabet) -> Self {
+    AlphabetSerializer::Chars(value.iter().collect())
+  }
 }
 
 impl Alphabet {
@@ -72,6 +104,10 @@ impl Alphabet {
 
   pub fn contains(&self, c: char) -> bool {
     self.indexes.contains_key(&c)
+  }
+
+  pub fn all(&self, s: String) -> bool {
+    s.chars().all(|c| self.contains(c))
   }
 
   pub fn add(&self, a: char, b: char) -> char {

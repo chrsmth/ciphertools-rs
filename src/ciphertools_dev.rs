@@ -26,6 +26,7 @@ enum Commands {
 
 #[derive(Parser)]
 struct BuildLanguage {
+  pub word_ngrams: String,
   pub unigrams_filepath: String,
   pub bigrams_filepath: String,
   pub trigrams_filepath: String,
@@ -64,13 +65,14 @@ fn run_text_confidence(opts: TextConfidence) {
 }
 
 fn run_build_language(opts: BuildLanguage) {
+  let words = parse_ngrams_csv(&opts.word_ngrams);
   let unigrams = parse_ngrams_csv(&opts.unigrams_filepath);
   let bigrams = parse_ngrams_csv(&opts.bigrams_filepath);
   let trigrams = parse_ngrams_csv(&opts.trigrams_filepath);
 
   let ranked_ngrams =
     AHashMap::from([(1, unigrams), (2, bigrams), (3, trigrams)]);
-  let language = Language::new(ranked_ngrams, opts.index_of_coincidence);
+  let language = Language::new(words, ranked_ngrams, opts.index_of_coincidence);
 
   let language_json = serde_json::to_string_pretty(&language).unwrap();
   println!("{}", language_json);

@@ -6,6 +6,8 @@ use crate::cli::{Alphabet, DictionaryOpts};
 pub struct AutokeyOpts {
   #[arg(long, value_enum, default_value_t = Alphabet::Latin)]
   pub alphabet: Alphabet,
+  #[arg(long, default_value_t = true)]
+  pub skip_whitespace: bool,
   #[command(subcommand)]
   pub commands: AutokeyCommands,
 }

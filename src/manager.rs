@@ -48,7 +48,6 @@ impl Manager {
     }
   }
 
-  //TODO shouldn't be debug printing
   pub fn display_scoreboard(&self) {
     self
       .scoreboard

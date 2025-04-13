@@ -2,16 +2,19 @@
 mod alphabet;
 mod cipher;
 mod cli;
+mod deferred_zip;
 mod language;
 mod manager;
 mod ngrams;
+mod quipqiup;
 mod resources;
 
 use crate::cipher::autokey;
 use crate::cipher::caesar;
 use crate::cipher::substitution;
 use crate::cipher::vigenere;
-use crate::cipher::BruteForceIterator;
+use crate::cipher::IntoDecipherKey;
+use crate::cipher::KeysIterator;
 use crate::cli::CliOpts;
 use crate::manager::Manager;
 use std::fmt::Display;
@@ -40,7 +43,8 @@ fn run(cli: CliOpts) -> Result<(), String> {
   let language = Language::english();
   match cli.commands {
     cli::Commands::Autokey(opts) => {
-      let context = autokey::Autokey::new(opts.alphabet.into());
+      let context =
+        autokey::Autokey::new(opts.alphabet.into(), opts.skip_whitespace);
       match opts.commands {
         cli::autokey::AutokeyCommands::Encipher(opts) => {
           run_encipher(
@@ -72,7 +76,8 @@ fn run(cli: CliOpts) -> Result<(), String> {
       }
     }
     cli::Commands::Vigenere(opts) => {
-      let context = vigenere::Vigenere::new(opts.alphabet.into());
+      let context =
+        vigenere::Vigenere::new(opts.alphabet.into(), opts.skip_whitespace);
       match opts.commands {
         cli::vigenere::VigenereCommands::Encipher(opts) => {
           run_encipher(
@@ -120,7 +125,7 @@ fn run(cli: CliOpts) -> Result<(), String> {
             &context,
           ))
           .map_err(|e| format!("Failed to parse key: {e}"))?
-          .inverse();
+          .into_decipher_key();
           run_decipher(&key, context, &opts.ciphertext);
         }
       }
@@ -157,6 +162,7 @@ fn run(cli: CliOpts) -> Result<(), String> {
   }
   Ok(())
 }
+
 fn run_encipher<E: Encipher>(key: &E::Key, context: E, plaintext: &str) {
   let result = context.encipher(plaintext, key);
   println!("{}", result);
@@ -169,7 +175,7 @@ fn run_decipher<D: Decipher>(key: &D::Key, context: D, ciphertext: &str) {
 
 fn run_brute_force<D>(context: D, ciphertext: &str, manager: &mut Manager)
 where
-  D: BruteForceIterator + Decipher,
+  D: KeysIterator + Decipher,
   D::Key: Display,
 {
   for key in context.brute_force_iter() {
@@ -223,3 +229,6 @@ where
 
   Ok(iter)
 }
+
+#[cfg(test)]
+mod tests;

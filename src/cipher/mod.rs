@@ -15,9 +15,30 @@ pub trait Decipher {
   fn decipher(&self, ciphertext: &str, key: &Self::Key) -> String;
 }
 
-//TODO better name for this
-pub trait BruteForceIterator: Decipher {
-  type BruteForceIter: Iterator<Item = Self::Key>;
+pub trait PartialDecipher {
+  type PartialKey;
 
-  fn brute_force_iter(&self) -> Self::BruteForceIter;
+  fn partial_decipher(
+    &self,
+    ciphertext: &str,
+    key: &Self::PartialKey,
+  ) -> String;
+}
+
+pub trait KeysIterator: Decipher {
+  type KeysIter: Iterator<Item = Self::Key>;
+
+  fn brute_force_iter(&self) -> Self::KeysIter;
+}
+
+pub trait IntoDecipherKey {
+  type DecipherKey;
+
+  fn into_decipher_key(self) -> Self::DecipherKey;
+}
+
+pub trait IntoEncipherKey {
+  type EncipherKey;
+
+  fn into_encipher_key(self) -> Self::EncipherKey;
 }

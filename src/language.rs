@@ -1,30 +1,31 @@
-use ahash::{AHashMap, AHashSet};
-
-use serde::{Deserialize, Serialize};
-
 use crate::ngrams::{Ngrams, RankedNgrams};
 use crate::resources;
+use ahash::{AHashMap, AHashSet};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(from = "LanguageSerializer", into = "LanguageSerializer")]
 pub struct Language {
-  ranked_ngrams: AHashMap<usize, RankedNgrams>,
+  word_ngrams: RankedNgrams,
+  char_ngrams: AHashMap<usize, RankedNgrams>,
   index_of_coincidence: f64,
 }
 
 pub struct Confidence(Box<dyn Fn(&str) -> f64>);
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageSerializer {
-  ngrams: AHashMap<usize, Ngrams>,
+  word_ngrams: Ngrams,
+  char_ngrams: AHashMap<usize, Ngrams>,
   index_of_coincidence: f64,
 }
 
 impl From<Language> for LanguageSerializer {
   fn from(language: Language) -> Self {
     LanguageSerializer {
-      ngrams: language
-        .ranked_ngrams
+      word_ngrams: language.word_ngrams.into(),
+      char_ngrams: language
+        .char_ngrams
         .into_iter()
         .map(|(n, ranked_ngrams)| (n, ranked_ngrams.into()))
         .collect(),
@@ -36,8 +37,9 @@ impl From<Language> for LanguageSerializer {
 impl From<LanguageSerializer> for Language {
   fn from(language_serializer: LanguageSerializer) -> Self {
     Language {
-      ranked_ngrams: language_serializer
-        .ngrams
+      word_ngrams: language_serializer.word_ngrams.into(),
+      char_ngrams: language_serializer
+        .char_ngrams
         .into_iter()
         .map(|(n, ngrams)| (n, ngrams.into()))
         .collect(),
@@ -58,11 +60,13 @@ impl Confidence {
 
 impl Language {
   pub fn new(
-    ranked_ngrams: AHashMap<usize, RankedNgrams>,
+    word_ngrams: RankedNgrams,
+    char_ngrams: AHashMap<usize, RankedNgrams>,
     index_of_coincidence: f64,
   ) -> Self {
     Language {
-      ranked_ngrams,
+      word_ngrams,
+      char_ngrams,
       index_of_coincidence,
     }
   }
@@ -84,7 +88,7 @@ impl Language {
 
   fn text_confidence_chi2_ngram(&self, text: &str, n: usize) -> f64 {
     let ranked_ngrams = self
-      .ranked_ngrams
+      .char_ngrams
       .get(&n)
       .expect("Language doesn't support {n}grams");
 
