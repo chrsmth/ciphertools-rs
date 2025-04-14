@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 stutter_zip.workspace = true
+cipher_derive.workspace = true
 
 ahash = { version = "*", features = ["serde"] }
 clap = { version = "*", features = ["derive"] }

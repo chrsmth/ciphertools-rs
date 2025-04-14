@@ -2,6 +2,7 @@
 members = [
   "binaries/ciphertools",
   "binaries/ciphertools-dev",
+  "crates/cipher-derive",
 ]
 resolver = "3"
 
@@ -18,4 +19,5 @@ warnings = "deny"
 
 [workspace.dependencies]
 cipher.path = "crates/cipher"
+cipher_derive.path = "crates/cipher-derive"
 stutter_zip.path = "crates/stutter-zip"

@@ -2,10 +2,13 @@ use crate::{
   alphabet::Alphabet,
   cipher::{Decipher, Encipher, KeysIterator},
 };
+use cipher_derive::{IntoDecipherKey, IntoEncipherKey};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, IntoDecipherKey, IntoEncipherKey,
+)]
 pub struct CaesarKey(char);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

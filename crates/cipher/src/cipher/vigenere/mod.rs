@@ -2,11 +2,14 @@ use crate::{
   alphabet::Alphabet,
   cipher::{Decipher, Encipher},
 };
+use cipher_derive::{IntoDecipherKey, IntoEncipherKey};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use stutter_zip::StutterZipIterator;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, IntoDecipherKey, IntoEncipherKey,
+)]
 pub struct VigenereKey(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -7,8 +7,11 @@ macro_rules! cipher_test {
     #[allow(non_snake_case)]
     fn $name() {
       use insta::assert_snapshot;
+      use $crate::cipher::IntoDecipherKey;
+
       let ciphertext = $context.encipher(&$plaintext, &$encipher_key);
-      let plaintext = $context.decipher(&ciphertext, &$encipher_key);
+      let decipher_key = $encipher_key.clone().into_decipher_key();
+      let plaintext = $context.decipher(&ciphertext, &decipher_key);
 
       assert_eq!(plaintext, $plaintext);
       assert_snapshot!(ciphertext);
