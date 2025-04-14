@@ -1,0 +1,12 @@
+[package]
+edition.workspace = true
+name = "stutter_zip"
+publish.workspace = true
+version.workspace = true
+
+[lib]
+name = "stutter_zip"
+
+[lints]
+workspace = true
+

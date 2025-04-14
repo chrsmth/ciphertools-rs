@@ -1,0 +1,23 @@
+[package]
+edition.workspace = true
+name = "ciphertools-dev"
+version.workspace = true
+
+[lints]
+workspace = true
+
+[profile.release]
+debug = true
+
+[[bin]]
+name = "ciphertoolsdev"
+path = "src/main.rs"
+
+[dependencies]
+cipher.workspace = true
+
+ahash = { version = "*", features = ["serde"] }
+clap = { version = "*", features = ["derive"] }
+csv = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"

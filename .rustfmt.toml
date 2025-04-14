@@ -1,0 +1,21 @@
+edition = "2021"
+max_width = 80
+hard_tabs = false
+tab_spaces = 2
+
+newline_stype = "Unix"
+use_small_heuristics = "Default"
+reorder_imports = true
+reorder_modules = true
+remove_nested_parents = true
+fn_params_layout = "Tall"
+merge_derives = true
+use_try_shorthand = false
+use_field_init_shorthand = false
+force_explicit_abi = true
+
+unstable_features = true
+
+import_granularity = "Crate"
+
+group_imports = "StdExternalCrate"

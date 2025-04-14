@@ -1,0 +1,26 @@
+[package]
+edition.workspace = true
+name = "cipher"
+publish.workspace = true
+version.workspace = true
+
+[lib]
+name = "cipher"
+
+[lints]
+workspace = true
+
+[dependencies]
+stutter_zip.workspace = true
+
+ahash = { version = "*", features = ["serde"] }
+clap = { version = "*", features = ["derive"] }
+csv = "*"
+itertools = "*"
+log= "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+
+[dev-dependencies]
+insta = "*"
+once_cell = "*"

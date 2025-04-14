@@ -1,34 +1,21 @@
-[package]
-name = "ciphertools"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+  "binaries/ciphertools",
+  "binaries/ciphertools-dev",
+]
+resolver = "3"
 
-[lints.clippy]
+[workspace.package]
+edition = "2024"
+publish = false
+version = "0.1.0"
+
+[workspace.lints.clippy]
 needless_lifetimes = "deny"
 
-[lints.rust]
+[workspace.lints.rust]
 warnings = "deny"
 
-[profile.release]
-debug = true
-
-[[bin]]
-name = "ciphertools"
-path = "src/main.rs"
-
-[[bin]]
-name = "ciphertools-dev"
-path = "src/ciphertools_dev.rs"
-
-[dependencies]
-ahash = { version = "*", features = ["serde"] }
-clap = { version = "*", features = ["derive"] }
-csv = "*"
-itertools = "*"
-log= "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
-
-[dev-dependencies]
-insta = "*"
-once_cell = "*"
+[workspace.dependencies]
+cipher.path = "crates/cipher"
+stutter_zip.path = "crates/stutter-zip"
