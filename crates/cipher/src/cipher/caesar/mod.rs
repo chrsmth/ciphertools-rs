@@ -81,7 +81,7 @@ impl KeysIterator for Caesar {
   type KeysIter =
     <std::vec::Vec<CaesarKey> as std::iter::IntoIterator>::IntoIter;
 
-  fn brute_force_iter(&self) -> Self::KeysIter {
+  fn keys_iter(&self) -> Self::KeysIter {
     let a: Vec<CaesarKey> = self.alphabet.iter().map(CaesarKey::new).collect();
 
     a.into_iter()

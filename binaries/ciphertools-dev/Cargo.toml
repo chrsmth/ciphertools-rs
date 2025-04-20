@@ -10,7 +10,7 @@ workspace = true
 debug = true
 
 [[bin]]
-name = "ciphertoolsdev"
+name = "ciphertools-dev"
 path = "src/main.rs"
 
 [dependencies]

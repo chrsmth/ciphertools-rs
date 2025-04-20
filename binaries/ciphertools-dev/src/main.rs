@@ -1,15 +1,13 @@
 #![allow(dead_code)]
-use clap::Parser;
-use csv::Reader;
-
-use cipher::language;
-use cipher::ngrams;
-
-use crate::language::Language;
 use crate::ngrams::RankedNgrams;
 use ahash::AHashMap;
-
+use cipher::language::Language;
+use cipher::ngrams;
+use cipher::quipqiup::QuipqiupContext;
+use clap::Parser;
+use csv::Reader;
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 #[derive(Parser)]
 struct CliOpts {
@@ -21,6 +19,7 @@ struct CliOpts {
 enum Commands {
   BuildLanguage(BuildLanguage),
   TextConfidence(TextConfidence),
+  BuildQuipqiupContext(BuildQuipqiupContext),
 }
 
 #[derive(Parser)]
@@ -34,8 +33,13 @@ struct BuildLanguage {
 
 #[derive(Parser)]
 struct TextConfidence {
-  pub language: String,
+  pub language_file: String,
   pub text: String,
+}
+
+#[derive(Parser)]
+struct BuildQuipqiupContext {
+  pub words_file: String,
 }
 
 fn main() {
@@ -48,19 +52,8 @@ fn run(cli_opts: CliOpts) {
   match cli_opts.commands {
     Commands::BuildLanguage(opts) => run_build_language(opts),
     Commands::TextConfidence(opts) => run_text_confidence(opts),
+    Commands::BuildQuipqiupContext(opts) => run_build_quipqiup_context(opts),
   }
-}
-
-fn run_text_confidence(opts: TextConfidence) {
-  let language_json =
-    std::fs::read_to_string(opts.language).expect("failed to read language");
-  let language: language::Language =
-    serde_json::from_str(&language_json).expect("failed to parse language");
-
-  println!(
-    "confidence: {}",
-    language.text_confidence_chi2_trigram(&opts.text)
-  );
 }
 
 fn run_build_language(opts: BuildLanguage) {
@@ -95,4 +88,29 @@ fn parse_ngrams_csv(file_path: &str) -> RankedNgrams {
   });
 
   RankedNgrams::from_iter(ngrams_iter)
+}
+
+fn run_text_confidence(opts: TextConfidence) {
+  let language_json = std::fs::read_to_string(opts.language_file)
+    .expect("failed to read language");
+  let language: Language =
+    serde_json::from_str(&language_json).expect("failed to parse language");
+
+  println!(
+    "confidence: {}",
+    language.text_confidence_chi2_trigram(&opts.text)
+  );
+}
+
+fn run_build_quipqiup_context(opts: BuildQuipqiupContext) {
+  let file =
+    File::open(opts.words_file).expect("Failed to open: {opts.words_file}");
+  let lines: Vec<String> = BufReader::new(file)
+    .lines()
+    .map(|line_res| line_res.expect("failed to parse line"))
+    .collect();
+
+  let quipqiup_context = QuipqiupContext::new(lines);
+  let quipqiup_json = serde_json::to_string_pretty(&quipqiup_context).unwrap();
+  println!("{}", quipqiup_json);
 }

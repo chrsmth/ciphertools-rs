@@ -164,7 +164,7 @@ where
   D: KeysIterator + Decipher,
   D::Key: Display,
 {
-  for key in context.brute_force_iter() {
+  for key in context.keys_iter() {
     manager.insert(context.decipher(ciphertext, &key), format!("{}", key));
   }
 
@@ -203,12 +203,12 @@ where
     Ok(line) => match K::try_from((&line, &context)) {
       Ok(key) => Some(key),
       Err(e) => {
-        eprintln!("failed to parse line in dictionary: {e}");
+        eprintln!("Failed to parse line in dictionary: {e}");
         None
       }
     },
     Err(e) => {
-      eprintln!("failed to parse line in dictionary: {e}");
+      eprintln!("Failed to parse line in dictionary: {e}");
       None
     }
   });

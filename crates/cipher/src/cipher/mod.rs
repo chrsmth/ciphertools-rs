@@ -28,7 +28,7 @@ pub trait PartialDecipher {
 pub trait KeysIterator: Decipher {
   type KeysIter: Iterator<Item = Self::Key>;
 
-  fn brute_force_iter(&self) -> Self::KeysIter;
+  fn keys_iter(&self) -> Self::KeysIter;
 }
 
 pub trait IntoDecipherKey {

@@ -1,3 +1,5 @@
+mod quipqiup;
+
 use crate::alphabet::Alphabet;
 use crate::cipher::{
   Decipher, Encipher, IntoDecipherKey, IntoEncipherKey, PartialDecipher,
