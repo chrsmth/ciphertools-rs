@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt;
+use std::sync::Mutex;
 use std::{collections::BTreeSet, num::NonZeroUsize};
 
-use cipher::language::Confidence;
+use cipher::language::GetConfidence;
 
 #[derive(Debug)]
 struct CandidatePlaintext {
@@ -34,16 +35,16 @@ impl Ord for CandidatePlaintext {
   }
 }
 
-pub struct Manager {
-  scoreboard: BTreeSet<CandidatePlaintext>,
-  confidence: Confidence,
+pub struct Scoreboard {
+  scoreboard: Mutex<BTreeSet<CandidatePlaintext>>,
+  confidence: GetConfidence,
   len: usize,
 }
 
-impl Manager {
-  pub fn new(len: NonZeroUsize, confidence: Confidence) -> Self {
-    Manager {
-      scoreboard: BTreeSet::new(),
+impl Scoreboard {
+  pub fn new(len: NonZeroUsize, confidence: GetConfidence) -> Self {
+    Scoreboard {
+      scoreboard: Mutex::new(BTreeSet::new()),
       confidence,
       len: len.into(),
     }
@@ -52,35 +53,47 @@ impl Manager {
   pub fn display_scoreboard(&self) {
     self
       .scoreboard
+      .lock()
+      .unwrap()
       .iter()
       .for_each(|score| println!("{}", score));
   }
 
-  pub fn insert(&mut self, text: String, key: String) {
-    let confidence = self.confidence.run(&text);
+  pub fn insert_with_confidence(
+    &self,
+    text: String,
+    key: String,
+    confidence: f64,
+  ) {
     let candidate = CandidatePlaintext {
       confidence,
       text,
       key,
     };
 
-    if self.scoreboard.len() < self.len {
-      self.scoreboard.insert(candidate);
+    let mut scoreboard = self.scoreboard.lock().unwrap();
+    if scoreboard.len() < self.len {
+      scoreboard.insert(candidate);
     } else {
-      let Some(last) = self.scoreboard.last() else {
+      let Some(last) = scoreboard.last() else {
         log::error!(
           "Failed to insert candidate: scoreboard should not be empty"
         );
         return;
       };
       if last.confidence > candidate.confidence {
-        self.scoreboard.insert(candidate);
+        scoreboard.insert(candidate);
       }
     }
 
-    if self.scoreboard.len() > self.len {
-      self.scoreboard.pop_last();
+    if scoreboard.len() > self.len {
+      scoreboard.pop_last();
     }
+  }
+
+  pub fn insert(&self, text: String, key: String) {
+    let confidence = self.confidence.run(&text);
+    self.insert_with_confidence(text, key, confidence);
   }
 }
 

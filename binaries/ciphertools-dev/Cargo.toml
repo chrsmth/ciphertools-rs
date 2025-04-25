@@ -6,9 +6,6 @@ version.workspace = true
 [lints]
 workspace = true
 
-[profile.release]
-debug = true
-
 [[bin]]
 name = "ciphertools-dev"
 path = "src/main.rs"

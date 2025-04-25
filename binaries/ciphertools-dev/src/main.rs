@@ -1,9 +1,8 @@
-#![allow(dead_code)]
 use crate::ngrams::RankedNgrams;
 use ahash::AHashMap;
+use cipher::cipher::substitution::quipqiup::QuipqiupContext;
 use cipher::language::Language;
 use cipher::ngrams;
-use cipher::quipqiup::QuipqiupContext;
 use clap::Parser;
 use csv::Reader;
 use std::fs::File;

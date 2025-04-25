@@ -1,21 +1,30 @@
 mod cli;
-mod manager;
+mod scoreboard;
+mod threads;
 
 use crate::cli::CliOpts;
-use crate::manager::Manager;
+use crate::scoreboard::Scoreboard;
 use cipher::cipher::{
   Decipher, Encipher, IntoDecipherKey, KeysIterator, autokey, caesar,
   substitution, vigenere,
 };
-use cipher::language::Language;
+use cipher::language::{GetConfidence, Language};
+use clap::Parser;
+use crossbeam::channel::Sender;
+use rayon::{ThreadPool, ThreadPoolBuilder};
 use std::fmt::Display;
 use std::fs::File;
+use std::sync::Arc;
 use std::{
   io::{BufRead, BufReader},
   num::NonZeroUsize,
 };
+use threads::{CandidateCollectorMsg, spawn_candidate_collector};
 
-use clap::Parser;
+struct CiphertoolsContext {
+  get_confidence: GetConfidence,
+  pool: ThreadPool,
+}
 
 fn main() {
   let cli = cli::CliOpts::parse();
@@ -25,9 +34,24 @@ fn main() {
   });
 }
 
-fn run(cli: CliOpts) -> Result<(), String> {
+fn run(opts: CliOpts) -> Result<(), String> {
   let language = Language::english();
-  match cli.commands {
+  let pool = ThreadPoolBuilder::new()
+    .num_threads(opts.jobs)
+    .build()
+    .unwrap_or_else(|e| {
+      eprintln!("Failed to build thread pool: {e}");
+      std::process::exit(1);
+    });
+
+  let ciphertools_context = CiphertoolsContext {
+    get_confidence: opts
+      .confidence_algorithm
+      .into_get_confidence(language.clone()),
+    pool,
+  };
+
+  match opts.commands {
     cli::Commands::Autokey(opts) => {
       let context =
         autokey::Autokey::new(opts.alphabet.into(), opts.skip_whitespace);
@@ -49,15 +73,13 @@ fn run(cli: CliOpts) -> Result<(), String> {
           );
         }
         cli::autokey::AutokeyCommands::Dictionary(opts) => {
-          let confidence = opts.confidence_algorithm.into_confidence(language);
+          let (tx, candidate_collector_handle) =
+            spawn_candidate_collector(ciphertools_context);
           let dictionary_iter =
-            get_dictionary_iter(&opts.dictionary_file, context.clone())?;
-          run_dictionary_attack(
-            context,
-            &opts.ciphertext,
-            dictionary_iter,
-            &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
-          )
+            get_dictionary_iter(opts.dictionary_file, context.clone())?;
+          run_dictionary_attack(context, opts.ciphertext, dictionary_iter, tx);
+
+          let _ = candidate_collector_handle.join();
         }
       }
     }
@@ -82,15 +104,13 @@ fn run(cli: CliOpts) -> Result<(), String> {
           );
         }
         cli::vigenere::VigenereCommands::Dictionary(opts) => {
-          let confidence = opts.confidence_algorithm.into_confidence(language);
+          let (tx, candidate_collector_handle) =
+            spawn_candidate_collector(ciphertools_context);
           let dictionary_iter =
-            get_dictionary_iter(&opts.dictionary_file, context.clone())?;
-          run_dictionary_attack(
-            context,
-            &opts.ciphertext,
-            dictionary_iter,
-            &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
-          )
+            get_dictionary_iter(opts.dictionary_file, context.clone())?;
+          run_dictionary_attack(context, opts.ciphertext, dictionary_iter, tx);
+
+          let _ = candidate_collector_handle.join();
         }
       }
     }
@@ -136,11 +156,13 @@ fn run(cli: CliOpts) -> Result<(), String> {
           );
         }
         cli::caesar::CaesarCommands::BruteForce(opts) => {
-          let confidence = opts.confidence_algorithm.into_confidence(language);
           run_brute_force(
             context,
             &opts.ciphertext,
-            &mut Manager::new(NonZeroUsize::new(10).unwrap(), confidence),
+            &mut Scoreboard::new(
+              NonZeroUsize::new(10).unwrap(),
+              ciphertools_context.get_confidence,
+            ),
           );
         }
       }
@@ -159,43 +181,45 @@ fn run_decipher<D: Decipher>(key: &D::Key, context: D, ciphertext: &str) {
   println!("{}", result);
 }
 
-fn run_brute_force<D>(context: D, ciphertext: &str, manager: &mut Manager)
+fn run_brute_force<D>(context: D, ciphertext: &str, scoreboard: &mut Scoreboard)
 where
   D: KeysIterator + Decipher,
   D::Key: Display,
 {
   for key in context.keys_iter() {
-    manager.insert(context.decipher(ciphertext, &key), format!("{}", key));
+    scoreboard.insert(context.decipher(ciphertext, &key), format!("{}", key));
   }
 
-  manager.display_scoreboard();
+  scoreboard.display_scoreboard();
 }
 
 fn run_dictionary_attack<D>(
   cipher: D,
-  ciphertext: &str,
+  ciphertext: String,
   dictionary: impl Iterator<Item = D::Key>,
-  manager: &mut Manager,
+  tx: Sender<CandidateCollectorMsg>,
 ) where
-  D: Decipher,
-  D::Key: Display,
+  D: Decipher + std::marker::Sync + std::marker::Send,
+  D::Key: Display + Send + Sync,
 {
-  for key in dictionary {
-    manager.insert(cipher.decipher(ciphertext, &key), format!("{}", key));
-  }
-
-  manager.display_scoreboard();
+  let cipher = Arc::new(cipher);
+  let ciphertext = Arc::new(ciphertext);
+  dictionary.for_each(|key| {
+    let text = cipher.decipher(&ciphertext, &key);
+    let key = format!("{}", key);
+    let _ = tx.send(CandidateCollectorMsg::CandidatePlaintext { text, key });
+  });
 }
 
 fn get_dictionary_iter<K, C>(
-  dictionary_file: &str,
+  dictionary_file: String,
   context: C,
 ) -> Result<impl Iterator<Item = K>, String>
 where
   for<'a> K: TryFrom<(&'a str, &'a C)>,
   for<'a> <K as TryFrom<(&'a str, &'a C)>>::Error: std::fmt::Display,
 {
-  let file = File::open(dictionary_file)
+  let file = File::open(&dictionary_file)
     .map_err(|e| format!("Failed to open file '{}': {}", dictionary_file, e))?;
   let reader = BufReader::new(file);
 

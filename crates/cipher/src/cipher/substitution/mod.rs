@@ -1,4 +1,4 @@
-mod quipqiup;
+pub mod quipqiup;
 
 use crate::alphabet::Alphabet;
 use crate::cipher::{

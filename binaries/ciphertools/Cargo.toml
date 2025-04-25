@@ -6,9 +6,6 @@ version.workspace = true
 [lints]
 workspace = true
 
-[profile.release]
-debug = true
-
 [[bin]]
 name = "ciphertools"
 path = "src/main.rs"
@@ -16,13 +13,18 @@ path = "src/main.rs"
 [dependencies]
 cipher.workspace = true
 
-ahash = { version = "*", features = ["serde"] }
-clap = { version = "*", features = ["derive"] }
-csv = "*"
-itertools = "*"
-log= "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
+ahash.workspace = true
+async-channel.workspace = true
+clap.workspace = true
+crossbeam.workspace = true
+csv.workspace = true
+futures.workspace = true
+itertools.workspace = true
+log.workspace = true
+num_cpus.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 insta = "*"

@@ -17,7 +17,23 @@ needless_lifetimes = "deny"
 [workspace.lints.rust]
 warnings = "deny"
 
+[profile.release]
+debug = true
+
 [workspace.dependencies]
 cipher.path = "crates/cipher"
 cipher_derive.path = "crates/cipher-derive"
 stutter_zip.path = "crates/stutter-zip"
+
+ahash = { version = "*", features = ["serde"] }
+async-channel = "*"
+clap = { version = "*", features = ["derive"] }
+crossbeam = "*"
+csv = "*"
+futures = "*"
+itertools = "*"
+log= "*"
+num_cpus = "*"
+rayon = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"

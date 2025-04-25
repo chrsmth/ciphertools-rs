@@ -2,6 +2,7 @@ use crate::ngrams::{Ngrams, RankedNgrams};
 use crate::resources;
 use ahash::{AHashMap, AHashSet};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(from = "LanguageSerializer", into = "LanguageSerializer")]
@@ -11,7 +12,8 @@ pub struct Language {
   index_of_coincidence: f64,
 }
 
-pub struct Confidence(Box<dyn Fn(&str) -> f64>);
+#[derive(Clone)]
+pub struct GetConfidence(Arc<dyn Fn(&str) -> f64 + Send + Sync>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageSerializer {
@@ -48,9 +50,9 @@ impl From<LanguageSerializer> for Language {
   }
 }
 
-impl Confidence {
-  pub fn new(confidence: Box<dyn Fn(&str) -> f64>) -> Self {
-    Confidence(confidence)
+impl GetConfidence {
+  pub fn new(confidence: Arc<dyn Fn(&str) -> f64 + Send + Sync>) -> Self {
+    GetConfidence(confidence)
   }
 
   pub fn run(&self, text: &str) -> f64 {

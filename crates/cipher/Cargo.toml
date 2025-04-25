@@ -14,13 +14,13 @@ workspace = true
 stutter_zip.workspace = true
 cipher_derive.workspace = true
 
-ahash = { version = "*", features = ["serde"] }
-clap = { version = "*", features = ["derive"] }
-csv = "*"
-itertools = "*"
-log= "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
+ahash.workspace = true
+clap.workspace = true
+csv.workspace = true
+itertools.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 insta = "*"
